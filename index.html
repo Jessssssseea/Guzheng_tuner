@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>古筝调音器 · Material You</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root{
+  --md-sys-color-primary: light-dark(#0061a4, #a0c9ff);
+  --md-sys-color-on-primary: light-dark(#ffffff, #003258);
+  --md-sys-color-surface: light-dark(#fdfcff, #1a1c1e);
+  --md-sys-color-on-surface: light-dark(#1a1c1e, #e2e2e6);
+  --md-sys-color-surface-variant: light-dark(#e0e2ec, #43474e);
+  --md-sys-shape-corner-large: 28px;
+  --md-sys-shape-corner-medium: 16px;
+
+  /* 移动端弹性尺寸 */
+  --space-xs: clamp(4px, 1vw, 8px);
+  --space-s : clamp(8px, 2vw, 12px);
+  --space-m : clamp(12px, 3vw, 24px);
+  --space-l : clamp(20px, 4vw, 32px);
+
+  --fs-xl: clamp(28px, 7vw, 48px);
+  --fs-l : clamp(20px, 5vw, 24px);
+  --fs-m : clamp(14px, 3.5vw, 16px);
+  --fs-s : clamp(12px, 3vw, 14px);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Roboto Flex","Noto Sans SC",system-ui;color:var(--md-sys-color-on-surface)}
+body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--md-sys-color-surface);padding:var(--space-m)}
+
+.card{width:min(100vw - var(--space-m)*2, 420px);background:var(--md-sys-color-surface-variant);
+      border-radius:var(--md-sys-shape-corner-large);
+      padding:var(--space-l);display:flex;flex-direction:column;gap:var(--space-m);
+      box-shadow:0 4px 16px rgba(0,0,0,.12)}
+
+h1{font-size:var(--fs-l);font-weight:500;text-align:center}
+
+/* 调式选择：横向滚动，避免折行 */
+.tuning-chips{display:flex;gap:var(--space-xs);overflow-x:auto;
+              padding-bottom:var(--space-xs); /* 预留滚动条空间 */}
+.tuning-chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:var(--space-xs) var(--space-s);border-radius:var(--md-sys-shape-corner-medium);
+      font-size:var(--fs-s);cursor:pointer;background:var(--md-sys-color-surface);transition:.2s;
+      white-space:nowrap}
+.chip.active{background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-weight:600}
+
+.tuner{text-align:center}
+.note{font-size:var(--fs-xl);font-weight:600;margin-bottom:2px}
+.freq{font-size:var(--fs-m);opacity:.8;margin-bottom:var(--space-s)}
+.bar{position:relative;width:100%;height:8px;background:#00000014;border-radius:8px;overflow:hidden}
+.indicator{position:absolute;top:0;left:50%;width:1px;height:100%;background:#00000026}
+.needle{position:absolute;top:0;left:50%;width:3px;height:100%;background:var(--md-sys-color-primary);transition:left .1s}
+
+/* 琴弦：弹性网格，超窄屏 4×5 排布 */
+.strings{display:grid;grid-template-columns:repeat(auto-fit,minmax(42px,1fr));gap:var(--space-xs)}
+.string-btn{aspect-ratio:1;border:none;border-radius:var(--md-sys-shape-corner-medium);
+            background:var(--md-sys-color-surface);font-size:var(--fs-m);font-weight:600;
+            cursor:pointer;transition:transform .15s;min-height:48px}
+.string-btn:active{transform:scale(.92)}
+.string-btn.active{background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary)}
+
+.controls{display:flex;gap:var(--space-s);justify-content:center}
+.btn{flex:1;padding:14px 0;border:none;border-radius:var(--md-sys-shape-corner-medium);
+     font-size:var(--fs-m);font-weight:500;cursor:pointer;transition:transform .15s;
+     min-height:48px;color:#fff}
+.btn:active{transform:scale(.95)}
+.start{background:#2ecc71}
+.stop{background:#e74c3c}
+.next{background:#9b59b6}
+
+.metronome{border-top:1px solid #00000014;padding-top:var(--space-m)}
+.metronome h3{font-size:var(--fs-l);text-align:center;margin-bottom:var(--space-s)}
+.row{display:flex;align-items:center;justify-content:center;gap:var(--space-s);flex-wrap:wrap}
+input[type=number]{width:60px;text-align:center;border:none;border-radius:8px;padding:6px 8px;
+                   font-size:var(--fs-s)}
+select,button{border-radius:var(--md-sys-shape-corner-medium);border:none;
+              padding:8px 12px;background:var(--md-sys-color-surface);
+              font-size:var(--fs-s);cursor:pointer;min-height:44px}
+.flash{width:32px;height:32px;border-radius:50%;background:#ccc;margin:var(--space-s) auto;
+       transition:background .1s}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>古筝调音器</h1>
+
+  <!-- 调式选择：外层 scroll -->
+  <div class="tuning-chips" id="tuningChips">
+    <span class="chip active" data-tuning="D">D调</span>
+    <span class="chip" data-tuning="G">G调</span>
+    <span class="chip" data-tuning="C">C调</span>
+    <span class="chip" data-tuning="F">F调</span>
+    <span class="chip" data-tuning="A">A调</span>
+    <span class="chip" data-tuning="E">E调</span>
+  </div>
+
+  <!-- 调音器 -->
+  <div class="tuner">
+    <div class="note" id="noteDisplay">-</div>
+    <div class="freq" id="freqDisplay">- Hz</div>
+    <div class="bar">
+      <div class="indicator"></div>
+      <div class="needle" id="needle"></div>
+    </div>
+  </div>
+
+  <!-- 琴弦 -->
+  <div class="strings" id="stringButtons"></div>
+
+  <!-- 控制 -->
+  <div class="controls">
+    <button class="btn start" id="startBtn">开始调音</button>
+    <button class="btn stop" id="stopBtn" style="display:none">停止</button>
+    <button class="btn next" id="nextBtn">下一弦</button>
+  </div>
+
+  <!-- 节拍器 -->
+  <div class="metronome">
+    <h3>节拍器</h3>
+    <div class="row">
+      <button id="metroBtn">开始</button>
+      <label>BPM<input type="number" id="bpmInput" value="60" min="30" max="240"></label>
+      <select id="timeSel">
+        <option value="2">2/4</option>
+        <option value="3">3/4</option>
+        <option value="4" selected>4/4</option>
+        <option value="6">6/8</option>
+      </select>
+    </div>
+    <div class="flash" id="flash"></div>
+  </div>
+</div>
+
+<script>
+/* =================  数据  ================= */
+const data={
+  D:[{s:21,n:"D2",f:73.42},{s:20,n:"E2",f:82.41},{s:19,n:"F♯2",f:92.50},{s:18,n:"A2",f:110.00},{s:17,n:"B2",f:123.47},{s:16,n:"D3",f:146.83},{s:15,n:"E3",f:164.81},{s:14,n:"F♯3",f:185.00},{s:13,n:"A3",f:220.00},{s:12,n:"B3",f:246.94},{s:11,n:"D4",f:293.66},{s:10,n:"E4",f:329.63},{s:9,n:"F♯4",f:369.99},{s:8,n:"A4",f:440.00},{s:7,n:"B4",f:493.88},{s:6,n:"D5",f:587.33},{s:5,n:"E5",f:659.26},{s:4,n:"F♯5",f:739.99},{s:3,n:"A5",f:880.00},{s:2,n:"B5",f:987.77},{s:1,n:"D6",f:1174.66}],
+  G:[{s:21,n:"G2",f:98.00},{s:20,n:"A2",f:110.00},{s:19,n:"B2",f:123.47},{s:18,n:"D3",f:146.83},{s:17,n:"E3",f:164.81},{s:16,n:"G3",f:196.00},{s:15,n:"A3",f:220.00},{s:14,n:"B3",f:246.94},{s:13,n:"D4",f:293.66},{s:12,n:"E4",f:329.63},{s:11,n:"G4",f:392.00},{s:10,n:"A4",f:440.00},{s:9,n:"B4",f:493.88},{s:8,n:"D5",f:587.33},{s:7,n:"E5",f:659.26},{s:6,n:"G5",f:783.99},{s:5,n:"A5",f:880.00},{s:4,n:"B5",f:987.77},{s:3,n:"D6",f:1174.66},{s:2,n:"E6",f:1318.51},{s:1,n:"G6",f:1567.98}],
+  C:[{s:21,n:"C2",f:65.41},{s:20,n:"D2",f:73.42},{s:19,n:"E2",f:82.41},{s:18,n:"G2",f:98.00},{s:17,n:"A2",f:110.00},{s:16,n:"C3",f:130.81},{s:15,n:"D3",f:146.83},{s:14,n:"E3",f:164.81},{s:13,n:"G3",f:196.00},{s:12,n:"A3",f:220.00},{s:11,n:"C4",f:261.63},{s:10,n:"D4",f:293.66},{s:9,n:"E4",f:329.63},{s:8,n:"G4",f:392.00},{s:7,n:"A4",f:440.00},{s:6,n:"C5",f:523.25},{s:5,n:"D5",f:587.33},{s:4,n:"E5",f:659.26},{s:3,n:"G5",f:783.99},{s:2,n:"A5",f:880.00},{s:1,n:"C6",f:1046.50}],
+  F:[{s:21,n:"F2",f:87.31},{s:20,n:"G2",f:98.00},{s:19,n:"A2",f:110.00},{s:18,n:"C3",f:130.81},{s:17,n:"D3",f:146.83},{s:16,n:"F3",f:174.61},{s:15,n:"G3",f:196.00},{s:14,n:"A3",f:220.00},{s:13,n:"C4",f:261.63},{s:12,n:"D4",f:293.66},{s:11,n:"F4",f:349.23},{s:10,n:"G4",f:392.00},{s:9,n:"A4",f:440.00},{s:8,n:"C5",f:523.25},{s:7,n:"D5",f:587.33},{s:6,n:"F5",f:698.46},{s:5,n:"G5",f:783.99},{s:4,n:"A5",f:880.00},{s:3,n:"C6",f:1046.50},{s:2,n:"D6",f:1174.66},{s:1,n:"F6",f:1396.91}],
+  A:[{s:21,n:"A1",f:55.00},{s:20,n:"B1",f:61.74},{s:19,n:"C♯2",f:69.30},{s:18,n:"E2",f:82.41},{s:17,n:"F♯2",f:92.50},{s:16,n:"A2",f:110.00},{s:15,n:"B2",f:123.47},{s:14,n:"C♯3",f:138.59},{s:13,n:"E3",f:164.81},{s:12,n:"F♯3",f:185.00},{s:11,n:"A3",f:220.00},{s:10,n:"B3",f:246.94},{s:9,n:"C♯4",f:277.18},{s:8,n:"E4",f:329.63},{s:7,n:"F♯4",f:369.99},{s:6,n:"A4",f:440.00},{s:5,n:"B4",f:493.88},{s:4,n:"C♯5",f:554.37},{s:3,n:"E5",f:659.26},{s:2,n:"F♯5",f:739.99},{s:1,n:"A5",f:880.00}],
+  E:[{s:21,n:"E1",f:41.20},{s:20,n:"F♯1",f:46.25},{s:19,n:"G♯1",f:51.91},{s:18,n:"B1",f:61.74},{s:17,n:"C♯2",f:69.30},{s:16,n:"E2",f:82.41},{s:15,n:"F♯2",f:92.50},{s:14,n:"G♯2",f:103.83},{s:13,n:"B2",f:123.47},{s:12,n:"C♯3",f:138.59},{s:11,n:"E3",f:164.81},{s:10,n:"F♯3",f:185.00},{s:9,n:"G♯3",f:207.65},{s:8,n:"B3",f:246.94},{s:7,n:"C♯4",f:277.18},{s:6,n:"E4",f:329.63},{s:5,n:"F♯4",f:369.99},{s:4,n:"G♯4",f:415.30},{s:3,n:"B4",f:493.88},{s:2,n:"C♯5",f:554.37},{s:1,n:"E5",f:659.26}]
+};
+let tuning='D',stringIndex=20,ctx,analyser,mic,playing=false;
+let metroCtx=new(window.AudioContext||window.webkitAudioContext)(),metroId=null,beat=0,bpm=60,beatsPerBar=4,is68=false;
+
+/* =================  调音器  ================= */
+function renderStrings(){
+  const box=document.getElementById('stringButtons');
+  box.innerHTML='';
+  data[tuning].forEach((o,i)=>{
+    const b=document.createElement('button');
+    b.className='string-btn'+(i===stringIndex?' active':'');
+    b.textContent=o.s;
+    b.onclick=()=>selectString(i);
+    box.appendChild(b);
+  });
+}
+function selectString(i){
+  stringIndex=i;
+  const o=data[tuning][i];
+  document.getElementById('noteDisplay').textContent=o.n;
+  document.getElementById('freqDisplay').textContent=o.f.toFixed(2)+' Hz';
+  renderStrings();
+}
+document.getElementById('tuningChips').addEventListener('click',e=>{
+  if(!e.target.classList.contains('chip'))return;
+  tuning=e.target.dataset.tuning;
+  [...document.querySelectorAll('.chip')].forEach(c=>c.classList.toggle('active',c===e.target));
+  stringIndex=data[tuning].length-1;
+  selectString(stringIndex);
+});
+document.getElementById('nextBtn').addEventListener('click',()=>{
+  stringIndex=(stringIndex-1+data[tuning].length)%data[tuning].length;
+  selectString(stringIndex);
+});
+document.getElementById('startBtn').addEventListener('click',async()=>{
+  ctx=new(window.AudioContext||window.webkitAudioContext)();
+  const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  mic=ctx.createMediaStreamSource(stream);
+  analyser=ctx.createAnalyser();analyser.fftSize=2048;
+  mic.connect(analyser);
+  playing=true;
+  document.getElementById('startBtn').style.display='none';
+  document.getElementById('stopBtn').style.display='inline-block';
+  detect();
+});
+document.getElementById('stopBtn').addEventListener('click',()=>{
+  playing=false;mic.disconnect();ctx.close();
+  document.getElementById('startBtn').style.display='inline-block';
+  document.getElementById('stopBtn').style.display='none';
+});
+function detect(){
+  if(!playing)return;
+  const buf=new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(buf);
+  let max=0,idx=0;
+  buf.forEach((v,i)=>{if(v>max){max=v;idx=i;}});
+  const f=idx*ctx.sampleRate/(buf.length*2);
+  const o=data[tuning][stringIndex];
+  const cents=1200*Math.log2(f/o.f);
+  const left=50+Math.max(-25,Math.min(25,cents/2));
+  document.getElementById('needle').style.left=left+'%';
+  requestAnimationFrame(detect);
+}
+
+/* =================  节拍器  ================= */
+function tick(){
+  const isAccent=beat===0;
+  const osc=metroCtx.createOscillator(),g=metroCtx.createGain();
+  osc.type=isAccent?'triangle':'sine';
+  osc.frequency.value=isAccent?800:600;
+  osc.connect(g);g.connect(metroCtx.destination);
+  g.gain.setValueAtTime(.1,metroCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,metroCtx.currentTime+.1);
+  osc.start();osc.stop(metroCtx.currentTime+.1);
+  flash();
+  beat=(beat+1)%beatsPerBar;
+}
+function startMetronome(){
+  const interval=is68?(60/bpm)*1000*(3/4):(60/bpm)*1000;
+  metroId=setInterval(tick,interval);
+}
+function flash(){
+  const f=document.getElementById('flash');
+  f.style.background='var(--md-sys-color-primary)';
+  setTimeout(()=>f.style.background='#ccc',120);
+}
+document.getElementById('metroBtn').addEventListener('click',()=>{
+  const btn=document.getElementById('metroBtn');
+  if(btn.textContent==='开始'){
+    beat=0;tick();startMetronome();
+    btn.textContent='停止';
+  }else{clearInterval(metroId);btn.textContent='开始';}
+});
+document.getElementById('bpmInput').addEventListener('input',e=>{
+  bpm=Math.max(30,Math.min(240,+e.target.value));
+  if(metroId){clearInterval(metroId);startMetronome();}
+});
+document.getElementById('timeSel').addEventListener('change',e=>{
+  beatsPerBar=+e.target.value;
+  is68=e.target.value==='6';
+  beat=0;
+  if(metroId){clearInterval(metroId);startMetronome();}
+});
+
+/* =================  启动  ================= */
+selectString(stringIndex);
+</script>
+</body>
+</html>

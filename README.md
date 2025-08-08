@@ -20,7 +20,7 @@
 
 ## 📥 使用方式
 
-1. **下载** `index.html` 到手机或电脑或体验网页`[https://jessssssseea.github.io/Guzheng_tuner/](https://jessssssseea.github.io/Guzheng_tuner/)`
+1. **下载** `index.html` 到手机或电脑或体验网页[`https://jessssssseea.github.io/Guzheng_tuner/`](https://jessssssseea.github.io/Guzheng_tuner/)
 2. **浏览器打开**（推荐 Chrome / Safari / Edge）  
 3. **允许麦克风权限**，开始调音！无需安装，离线可运行。
 
